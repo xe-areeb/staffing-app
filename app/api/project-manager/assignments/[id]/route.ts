@@ -6,7 +6,7 @@ import { UserRole } from '@prisma/client'
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions)
 
@@ -22,7 +22,7 @@ export async function DELETE(
   }
 
   try {
-    const { id } = params
+    const { id } = await params
 
     const assignment = await prisma.assignment.findUnique({
       where: { id },

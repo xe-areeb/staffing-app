@@ -9,7 +9,7 @@ import { BackButton } from '@/components/back-button'
 export default async function AssignStaffPage({
   params,
 }: {
-  params: { eventId: string }
+  params: Promise<{ eventId: string }>
 }) {
   const session = await getServerSession(authOptions)
 
@@ -21,11 +21,13 @@ export default async function AssignStaffPage({
     redirect('/dashboard')
   }
 
+  const { eventId } = await params
+
   // Verify user has access to this event
   const eventUser = await prisma.eventUser.findUnique({
     where: {
       eventId_userId: {
-        eventId: params.eventId,
+        eventId,
         userId: session.user.id,
       },
     },
@@ -36,7 +38,7 @@ export default async function AssignStaffPage({
   }
 
   const event = await prisma.event.findUnique({
-    where: { id: params.eventId },
+    where: { id: eventId },
     include: {
       eventUsers: {
         where: { role: UserRole.SUPERVISOR },
@@ -54,7 +56,7 @@ export default async function AssignStaffPage({
   })
 
   const existingAssignments = await prisma.assignment.findMany({
-    where: { eventId: params.eventId },
+    where: { eventId },
     include: {
       staff: true,
       supervisor: true,
@@ -71,7 +73,7 @@ export default async function AssignStaffPage({
         <p className="text-gray-600">Event: {event.name}</p>
       </div>
       <AssignmentInterface
-        eventId={params.eventId}
+        eventId={eventId}
         staff={allStaff}
         supervisors={supervisors}
         existingAssignments={existingAssignments}
