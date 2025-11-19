@@ -2,6 +2,7 @@ import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { prisma } from './db'
 import bcrypt from 'bcryptjs'
+import { UserRole } from '@prisma/client'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -53,7 +54,7 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string
-        session.user.role = token.role as string
+        session.user.role = token.role as UserRole
       }
       return session
     },
