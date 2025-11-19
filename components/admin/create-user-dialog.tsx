@@ -104,7 +104,7 @@ export function CreateUserDialog() {
             <Label htmlFor="role">Role</Label>
             <Select
               value={formData.role}
-              onValueChange={(value) =>
+              onValueChange={(value: string) =>
                 setFormData({ ...formData, role: value as UserRole })
               }
             >
