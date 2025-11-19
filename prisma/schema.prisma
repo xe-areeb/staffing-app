@@ -1,0 +1,128 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  ADMIN
+  PROJECT_MANAGER
+  SUPERVISOR
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Events created by this user (Admin)
+  eventsCreated Event[] @relation("EventCreator")
+  // Events where user is assigned as Project Manager or Supervisor
+  eventUsers EventUser[]
+  // Assignments made by this user (if Project Manager)
+  assignmentsMade Assignment[] @relation("AssignedBy")
+  // Assignments where user is supervisor
+  supervisorAssignments Assignment[] @relation("Supervisor")
+  // Feedback submitted by this user (if Supervisor)
+  feedbackSubmitted Feedback[] @relation("FeedbackSupervisor")
+}
+
+model Staff {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  // Additional fields from Google Sheets can be added here
+  // Using JSON to store flexible data
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignments Assignment[]
+  feedback    Feedback[]
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  date        DateTime?
+  location    String?
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy   User        @relation("EventCreator", fields: [createdById], references: [id])
+  eventUsers  EventUser[]
+  assignments Assignment[]
+  feedback    Feedback[]
+}
+
+model EventUser {
+  id        String   @id @default(cuid())
+  eventId   String
+  userId    String
+  role      UserRole // PROJECT_MANAGER or SUPERVISOR for this event
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
+}
+
+model Assignment {
+  id            String   @id @default(cuid())
+  eventId       String
+  staffId       String
+  supervisorId  String
+  assignedById  String   // Project Manager who made the assignment
+  createdAt     DateTime @default(now())
+
+  event      Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  staff      Staff  @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  supervisor User   @relation("Supervisor", fields: [supervisorId], references: [id], onDelete: Cascade)
+  assignedBy User   @relation("AssignedBy", fields: [assignedById], references: [id])
+  feedback   Feedback[]
+
+  @@unique([eventId, staffId, supervisorId])
+  @@index([eventId])
+  @@index([staffId])
+  @@index([supervisorId])
+}
+
+model Feedback {
+  id           String   @id @default(cuid())
+  assignmentId String
+  staffId      String
+  supervisorId String
+  eventId      String
+  // Feedback fields - using JSON for flexibility
+  // Example: { quality: "excellent", punctuality: "good", notes: "..." }
+  data         Json
+  submittedAt  DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  staff      Staff       @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  supervisor User        @relation("FeedbackSupervisor", fields: [supervisorId], references: [id], onDelete: Cascade)
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([assignmentId])
+  @@index([staffId])
+  @@index([supervisorId])
+  @@index([eventId])
+}
